@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IBM HR Analytics — Employee Attrition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0b1a2e;--navy-l:#122440;--navy-m:#193358;--navy-s:#1e3d6a;
+  --coral:#e0523a;--coral-l:#f06850;--coral-d:#c23a24;--coral-bg:rgba(224,82,58,0.08);
+  --w:#fff;--g50:#f7f8fa;--g100:#eef0f4;--g200:#dce0e7;--g300:#c2c8d3;
+  --g500:#6a7a90;--g700:#3a4c63;
+  --sh-s:0 1px 3px rgba(11,26,46,.07);--sh-m:0 4px 20px rgba(11,26,46,.1);
+  --sh-l:0 8px 36px rgba(11,26,46,.14);--sh-xl:0 18px 52px rgba(11,26,46,.2);
+  --r:14px;--r-lg:22px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--g50);color:var(--navy);line-height:1.6;overflow-x:hidden}
+
+/* ── Sidebar ── */
+.sb{position:fixed;left:0;top:0;bottom:0;width:276px;background:var(--navy);z-index:1000;display:flex;flex-direction:column;transition:transform .32s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 28px rgba(11,26,46,.35)}
+.sb-head{padding:26px 22px 22px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-head h2{color:var(--w);font-size:13px;font-weight:800;letter-spacing:.8px;text-transform:uppercase}
+.sb-head p{color:rgba(255,255,255,.35);font-size:10.5px;margin-top:3px;letter-spacing:.3px}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:13px;padding:11px 22px;color:rgba(255,255,255,.5);text-decoration:none;font-size:12.5px;font-weight:500;transition:all .2s;cursor:pointer;border-left:3px solid transparent;position:relative}
+.ni:hover{color:var(--w);background:rgba(255,255,255,.04)}
+.ni.active{color:var(--w);background:rgba(224,82,58,.1);border-left-color:var(--coral)}
+.ni .ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;background:rgba(255,255,255,.06);transition:all .2s;flex-shrink:0}
+.ni.active .ico{background:var(--coral);color:var(--w)}
+.ni .nm{position:absolute;right:18px;font-size:9.5px;font-weight:700;color:rgba(255,255,255,.18)}
+.sb-foot{padding:18px 22px;border-top:1px solid rgba(255,255,255,.07)}
+.sc{color:rgba(255,255,255,.35);font-size:10.5px;font-weight:700;letter-spacing:1.2px}
+.sc span{color:var(--coral)}
+
+/* ── Progress ── */
+.prg{position:fixed;top:0;left:276px;right:0;height:3px;background:var(--g200);z-index:999}
+.prg-f{height:100%;background:linear-gradient(90deg,var(--coral),var(--coral-l));width:0;transition:width .45s ease}
+
+/* ── Main ── */
+.mn{margin-left:276px}
+
+/* ── Slide ── */
+.sl{min-height:100vh;padding:56px 68px;display:flex;flex-direction:column;justify-content:center;opacity:0;transform:translateY(28px);transition:opacity .55s ease,transform .55s ease;position:relative}
+.sl.vis{opacity:1;transform:translateY(0)}
+.sn{position:absolute;top:36px;right:68px;font-size:10.5px;font-weight:700;color:var(--g300);letter-spacing:2px;text-transform:uppercase}
+
+/* ── Title Slide ── */
+.sl-t{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-l) 45%,var(--navy-m) 100%);color:var(--w);text-align:center;overflow:hidden}
+.sl-t::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 20%,rgba(224,82,58,.07) 0%,transparent 55%),radial-gradient(ellipse at 75% 80%,rgba(224,82,58,.04) 0%,transparent 50%)}
+.sl-t .ct{position:relative;z-index:1}
+.t-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(224,82,58,.14);border:1px solid rgba(224,82,58,.28);padding:7px 18px;border-radius:50px;font-size:11.5px;font-weight:700;color:var(--coral-l);letter-spacing:1px;text-transform:uppercase;margin-bottom:28px}
+.sl-t h1{font-size:clamp(30px,3.8vw,52px);font-weight:900;line-height:1.08;margin-bottom:16px;letter-spacing:-1px}
+.sl-t h1 .hl{color:var(--coral)}
+.sl-t .sub{font-size:17px;font-weight:300;color:rgba(255,255,255,.55);margin-bottom:44px;max-width:580px;margin-left:auto;margin-right:auto}
+.t-meta{display:flex;justify-content:center;gap:36px}
+.t-mi{display:flex;flex-direction:column;align-items:center;gap:3px}
+.t-mi .lb{font-size:9.5px;font-weight:700;color:rgba(255,255,255,.25);letter-spacing:1.6px;text-transform:uppercase}
+.t-mi .vl{font-size:13.5px;font-weight:500;color:rgba(255,255,255,.65)}
+
+/* ── Section Header ── */
+.sh{display:flex;align-items:center;gap:15px;margin-bottom:44px}
+.sh-i{width:50px;height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;background:linear-gradient(135deg,var(--coral),var(--coral-d));color:var(--w);box-shadow:0 4px 16px rgba(224,82,58,.3);flex-shrink:0}
+.sh-i.nv{background:linear-gradient(135deg,var(--navy),var(--navy-m));box-shadow:0 4px 16px rgba(11,26,46,.3)}
+.sh-t{font-size:30px;font-weight:800;letter-spacing:-.4px;line-height:1.15}
+.sh-s{font-size:13px;color:var(--g500);font-weight:500;margin-top:3px}
+
+/* ── Cards ── */
+.cd{background:var(--w);border-radius:var(--r);padding:26px;box-shadow:var(--sh-s);border:1px solid var(--g200);transition:all .3s ease}
+.cd:hover{box-shadow:var(--sh-l);transform:translateY(-2px);border-color:var(--g300)}
+.cg{display:grid;gap:18px}
+.cg2{grid-template-columns:repeat(2,1fr)}
+.cg3{grid-template-columns:repeat(3,1fr)}
+.cg5{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.c-lb{font-size:10.5px;font-weight:800;color:var(--coral);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}
+.c-lb.nv{color:var(--navy)}
+.c-tt{font-size:15px;font-weight:700;margin-bottom:7px;color:var(--navy)}
+.c-tx{font-size:12.5px;color:var(--g500);line-height:1.65}
+.c-tx code{background:var(--g100);padding:2px 6px;border-radius:4px;font-size:11.5px;font-family:'SF Mono','Consolas',monospace;color:var(--coral-d);border:1px solid var(--g200)}
+
+/* ── Stat Cards ── */
+.stc{background:var(--w);border-radius:var(--r-lg);padding:30px;box-shadow:var(--sh-s);border:1px solid var(--g200);transition:all .35s ease;position:relative;overflow:hidden}
+.stc::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--coral),var(--coral-l));transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
+.stc:hover::before{transform:scaleX(1)}
+.stc:hover{box-shadow:var(--sh-xl);transform:translateY(-4px)}
+.stc .s-ico{width:46px;height:46px;border-radius:11px;background:var(--coral-bg);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:18px}
+.st-n{font-size:42px;font-weight:900;color:var(--coral);line-height:1;margin-bottom:4px;letter-spacing:-1px}
+.st-c{font-size:12.5px;color:var(--g500);margin-bottom:14px;line-height:1.5}
+.st-c strong{color:var(--navy);font-weight:700}
+.st-c .hi{color:var(--coral);font-weight:700}
+.st-c .nv{color:var(--navy);font-weight:700}
+
+/* ── Bar Chart ── */
+.cha{background:var(--w);border-radius:var(--r);border:1px solid var(--g200);padding:30px;margin-top:22px}
+.cha-t{font-size:13.5px;font-weight:700;margin-bottom:22px;color:var(--navy)}
+.bch{display:flex;align-items:flex-end;gap:22px;height:190px;padding-top:16px}
+.bg{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
+.bp{display:flex;gap:4px;align-items:flex-end;height:100%;width:100%;justify-content:center}
+.b{width:26px;border-radius:5px 5px 2px 2px;transition:height 1s cubic-bezier(.4,0,.2,1);cursor:pointer}
+.b:hover{filter:brightness(1.1);transform:scaleY(1.02);transform-origin:bottom}
+.b.nv{background:linear-gradient(180deg,var(--navy),var(--navy-m))}
+.b.cr{background:linear-gradient(180deg,var(--coral),var(--coral-d))}
+.bl{font-size:10.5px;font-weight:600;color:var(--g500);text-align:center;line-height:1.25}
+.cleg{display:flex;gap:22px;margin-top:18px;justify-content:center}
+.leg-i{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:var(--g500)}
+.leg-d{width:10px;height:10px;border-radius:3px}
+.leg-d.nv{background:var(--navy)}.leg-d.cr{background:var(--coral)}
+
+/* ── Donut ── */
+.don-c{display:flex;align-items:center;gap:36px;flex-wrap:wrap;justify-content:center}
+.don{width:170px;height:170px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.don-ctr{position:absolute;width:96px;height:96px;background:var(--w);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
+.don-ctr .pct{font-size:22px;font-weight:900;color:var(--coral);line-height:1}
+.don-ctr .lbl{font-size:8.5px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px}
+.don-lg{display:flex;flex-direction:column;gap:10px}
+.don-lg-i{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--g700)}
+.don-lg-d{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+
+/* ── Step Cards ── */
+.sc-d{display:flex;gap:18px;background:var(--w);border-radius:var(--r);padding:22px;box-shadow:var(--sh-s);border:1px solid var(--g200);transition:all .3s ease}
+.sc-d:hover{box-shadow:var(--sh-m);border-color:var(--coral)}
+.sc-n{width:38px;height:38px;border-radius:9px;background:var(--navy);color:var(--w);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+.sc-c{flex:1}
+.sc-c h4{font-size:14px;font-weight:700;margin-bottom:5px;color:var(--navy)}
+.sc-c p{font-size:12.5px;color:var(--g500);line-height:1.6}
+
+/* ── Feature Cards ── */
+.fc{background:var(--w);border-radius:var(--r);padding:26px;box-shadow:var(--sh-s);border:1px solid var(--g200);transition:all .3s ease;text-align:center}
+.fc:hover{box-shadow:var(--sh-l);transform:translateY(-3px);border-color:var(--coral)}
+.fc .f-i{width:52px;height:52px;border-radius:13px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(135deg,rgba(224,82,58,.1),rgba(224,82,58,.04));color:var(--coral)}
+.fc h4{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:7px;font-family:'SF Mono','Consolas',monospace;letter-spacing:-.2px}
+.fc p{font-size:11.5px;color:var(--g500);line-height:1.55}
+
+/* ── Expandable ── */
+.ex{background:var(--w);border-radius:var(--r);border:1px solid var(--g200);margin-bottom:11px;overflow:hidden;transition:box-shadow .3s}
+.ex:hover{box-shadow:var(--sh-s)}
+.ex-tr{padding:16px 22px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-size:13px;font-weight:600;color:var(--navy);user-select:none}
+.ex-tr .aw{font-size:11px;transition:transform .3s;color:var(--g500)}
+.ex.op .ex-tr .aw{transform:rotate(180deg)}
+.ex-bd{max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s ease;padding:0 22px}
+.ex.op .ex-bd{max-height:500px;padding:0 22px 18px}
+.ex-bd p,.ex-bd ul{font-size:12.5px;color:var(--g500);line-height:1.65}
+.ex-bd ul{padding-left:18px;margin-top:8px}
+
+/* ── Intro text ── */
+.it{font-size:14.5px;color:var(--g500);line-height:1.8;max-width:700px;margin-bottom:36px}
+.it strong{color:var(--navy);font-weight:600}
+
+/* ── Slide Bgs ── */
+.sl.a{background:var(--w)}
+.sl.g{background:var(--g100)}
+
+/* ── Recommendation Cards ── */
+.rc{display:flex;gap:18px;background:var(--w);border-radius:var(--r);padding:26px;box-shadow:var(--sh-s);border:1px solid var(--g200);border-left:4px solid var(--coral);transition:all .3s ease}
+.rc:hover{box-shadow:var(--sh-l);transform:translateX(4px)}
+.rc .r-i{width:42px;height:42px;border-radius:11px;background:var(--coral-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.rc h4{font-size:14px;font-weight:700;margin-bottom:5px;color:var(--navy)}
+.rc p{font-size:12.5px;color:var(--g500);line-height:1.6}
+
+/* ── Closing Slide ── */
+.sl-cl{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-l) 100%);color:var(--w);text-align:center;overflow:hidden}
+.sl-cl::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(224,82,58,.07) 0%,transparent 55%)}
+.sl-cl .ct{position:relative;z-index:1;max-width:780px;margin:0 auto}
+.cl-ico{width:76px;height:76px;border-radius:22px;background:linear-gradient(135deg,var(--coral),var(--coral-d));display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 28px;box-shadow:0 8px 32px rgba(224,82,58,.4)}
+.sl-cl h2{font-size:38px;font-weight:900;margin-bottom:14px;letter-spacing:-.5px}
+.sl-cl .sub{font-size:15px;color:rgba(255,255,255,.45);font-weight:300;margin-bottom:44px}
+.cl-st{display:flex;justify-content:center;gap:44px;margin-bottom:44px}
+.cl-s .nm{font-size:34px;font-weight:900;color:var(--coral)}
+.cl-s .lb{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1px}
+
+/* ── Table ── */
+.dtable{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}
+.dtable th{text-align:left;padding:10px 14px;background:var(--navy);color:var(--w);font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+.dtable td{padding:10px 14px;border-bottom:1px solid var(--g200);color:var(--g700);line-height:1.5}
+.dtable tr:hover td{background:var(--coral-bg)}
+.dtable tr:last-child td{border-bottom:none}
+.dtable code{background:var(--g100);padding:2px 5px;border-radius:3px;font-size:10.5px;font-family:'SF Mono','Consolas',monospace;color:var(--coral-d);border:1px solid var(--g200)}
+
+/* ── Pipeline ── */
+.pipeline{display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center;margin:24px 0}
+.pipe-step{display:flex;align-items:center;gap:10px;background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:14px 18px;box-shadow:var(--sh-s);transition:all .3s}
+.pipe-step:hover{box-shadow:var(--sh-m);border-color:var(--coral);transform:translateY(-2px)}
+.pipe-step .p-n{width:28px;height:28px;border-radius:7px;background:var(--coral);color:var(--w);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.pipe-step .p-l{font-size:11.5px;font-weight:600;color:var(--navy);white-space:nowrap}
+.pipe-arrow{font-size:18px;color:var(--g300);margin:0 6px;flex-shrink:0}
+
+/* ── Keyboard ── */
+.kh{position:fixed;bottom:18px;right:18px;background:var(--navy);color:rgba(255,255,255,.55);padding:7px 14px;border-radius:8px;font-size:10.5px;font-weight:600;z-index:998;opacity:.65;transition:opacity .3s}
+.kh:hover{opacity:1}
+.kh kbd{background:rgba(255,255,255,.13);padding:2px 5px;border-radius:3px;font-family:inherit;margin:0 2px}
+
+/* ── Mobile ── */
+.mt{display:none;position:fixed;top:14px;left:14px;width:42px;height:42px;border-radius:11px;background:var(--navy);color:var(--w);border:none;cursor:pointer;z-index:1001;align-items:center;justify-content:center;font-size:17px;box-shadow:var(--sh-l)}
+@media(max-width:1024px){
+  .sb{transform:translateX(-100%)}
+  .sb.open{transform:translateX(0)}
+  .mn{margin-left:0}
+  .mt{display:flex}
+  .prg{left:0}
+  .sl{padding:56px 28px}
+  .cg3{grid-template-columns:1fr}
+  .cg5{grid-template-columns:1fr 1fr}
+  .bch{gap:10px;height:155px}
+}
+@media(max-width:640px){
+  .sl{padding:56px 18px}
+  .cg2{grid-template-columns:1fr}
+  .cg5{grid-template-columns:1fr}
+  .t-meta{flex-direction:column;gap:14px}
+  .don-c{flex-direction:column}
+  .cl-st{flex-direction:column;gap:20px}
+  .pipeline{flex-direction:column}
+  .pipe-arrow{transform:rotate(90deg)}
+}
+@media print{
+  .sb,.prg,.mt,.kh{display:none!important}
+  .mn{margin-left:0}
+  .sl{min-height:auto;page-break-after:always;opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<button class="mt" onclick="document.querySelector('.sb').classList.toggle('open')" aria-label="Menu">☰</button>
+
+<!-- Sidebar -->
+<nav class="sb" id="sb">
+  <div class="sb-head">
+    <h2>Capstone Project</h2>
+    <p>IBM HR Analytics</p>
+  </div>
+  <div class="sb-nav" id="sbN">
+    <a class="ni active" data-s="0" href="#s0"><span class="ico">🏠</span>Title<span class="nm">01</span></a>
+    <a class="ni" data-s="1" href="#s1"><span class="ico">🎯</span>Business Problem<span class="nm">02</span></a>
+    <a class="ni" data-s="2" href="#s2"><span class="ico">📂</span>Dataset Overview<span class="nm">03</span></a>
+    <a class="ni" data-s="3" href="#s3"><span class="ico">🔍</span>Data Quality<span class="nm">04</span></a>
+    <a class="ni" data-s="4" href="#s4"><span class="ico">🧹</span>Data Cleaning<span class="nm">05</span></a>
+    <a class="ni" data-s="5" href="#s5"><span class="ico">⚙️</span>Feature Preparation<span class="nm">06</span></a>
+    <a class="ni" data-s="6" href="#s6"><span class="ico">📊</span>EDA — Key Findings<span class="nm">07</span></a>
+    <a class="ni" data-s="7" href="#s7"><span class="ico">📈</span>EDA — Visual Deep Dive<span class="nm">08</span></a>
+    <a class="ni" data-s="8" href="#s8"><span class="ico">🛠️</span>Feature Engineering<span class="nm">09</span></a>
+    <a class="ni" data-s="9" href="#s9"><span class="ico">📋</span>Executive Summary<span class="nm">10</span></a>
+    <a class="ni" data-s="10" href="#s10"><span class="ico">📄</span>Final Report<span class="nm">11</span></a>
+    <a class="ni" data-s="11" href="#s11"><span class="ico">🎯</span>Recommendations<span class="nm">12</span></a>
+  </div>
+  <div class="sb-foot"><div class="sc">SLIDE <span id="cS">1</span> / 12</div></div>
+</nav>
+
+<div class="prg"><div class="prg-f" id="pF"></div></div>
+
+<main class="mn" id="mn">
+
+<!-- ════════ SLIDE 0: TITLE ════════ -->
+<section class="sl sl-t vis" id="s0">
+  <div class="ct">
+    <div class="t-badge">📊 Data Analytics Capstone Project</div>
+    <h1>IBM HR Analytics<br><span class="hl">Employee Attrition</span></h1>
+    <p class="sub">An end-to-end data science project — from raw data quality assessment to actionable HR retention strategy and predictive feature engineering.</p>
+    <div class="t-meta">
+      <div class="t-mi"><span class="lb">Presented By</span><span class="vl">[Your Name]</span></div>
+      <div class="t-mi"><span class="lb">Dataset</span><span class="vl">1,495 Employees × 37 Features</span></div>
+      <div class="t-mi"><span class="lb">Date</span><span class="vl">[Date]</span></div>
+    </div>
+  </div>
+  <span class="sn" style="color:rgba(255,255,255,.12)">01 / 12</span>
+</section>
+
+<!-- ════════ SLIDE 1: BUSINESS PROBLEM ════════ -->
+<section class="sl a" id="s1">
+  <span class="sn">02 / 12</span>
+  <div class="sh">
+    <div class="sh-i">🎯</div>
+    <div><div class="sh-t">Step 1 — Business Problem</div><div class="sh-s">Understanding why employees leave and what drives turnover</div></div>
+  </div>
+  <p class="it">High employee turnover increases hiring and training costs while reducing productivity. This project identifies <strong>why employees leave</strong> and helps HR <strong>predict and reduce attrition</strong> through data-driven insights.</p>
+  <div class="cg cg3">
+    <div class="cd" style="border-top:4px solid var(--coral)">
+      <div class="c-lb">Core Question</div>
+      <div class="c-tt">What is the current attrition rate?</div>
+      <p class="c-tx">Establishing a baseline attrition rate (16.0%) to quantify the scale of the problem and measure the impact of future interventions.</p>
+    </div>
+    <div class="cd" style="border-top:4px solid var(--navy)">
+      <div class="c-lb nv">Risk Factors</div>
+      <div class="c-tt">Which factors drive employees to leave?</div>
+      <p class="c-tx">Identifying the strongest predictors — OverTime, Salary, Job Satisfaction, DistanceFromHome — that correlate with employee departure.</p>
+    </div>
+    <div class="cd" style="border-top:4px solid var(--coral)">
+      <div class="c-lb">Role Analysis</div>
+      <div class="c-tt">Which departments have the highest turnover?</div>
+      <p class="c-tx">Pinpointing high-risk job roles (Sales Representatives, Lab Technicians) to target retention programs where they're needed most.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 2: DATASET OVERVIEW ════════ -->
+<section class="sl g" id="s2">
+  <span class="sn">03 / 12</span>
+  <div class="sh">
+    <div class="sh-i">📂</div>
+    <div><div class="sh-t">Step 2 — Dataset Overview</div><div class="sh-s">1,495 employees × 37 features across 6 categories</div></div>
+  </div>
+  <div class="cd" style="margin-bottom:24px">
+    <table class="dtable">
+      <thead>
+        <tr><th>Category</th><th>Key Features</th><th>Types</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Target</strong></td><td><code>Attrition</code> (Yes/No)</td><td>Categorical (Binary)</td></tr>
+        <tr><td><strong>Demographics</strong></td><td><code>Age</code>, <code>Gender</code>, <code>MaritalStatus</code>, <code>DistanceFromHome</code></td><td>Numerical & Categorical</td></tr>
+        <tr><td><strong>Job Details</strong></td><td><code>Department</code>, <code>JobRole</code>, <code>JobLevel</code>, <code>TotalWorkingYears</code></td><td>Numerical & Categorical</td></tr>
+        <tr><td><strong>Compensation</strong></td><td><code>MonthlyIncome</code>, <code>PercentSalaryHike</code>, <code>StockOptionLevel</code></td><td>Numerical</td></tr>
+        <tr><td><strong>Satisfaction</strong></td><td><code>EnvironmentSatisfaction</code>, <code>JobSatisfaction</code>, <code>WorkLifeBalance</code>, <code>OverTime</code></td><td>Ordinal & Categorical</td></tr>
+        <tr><td><strong>Drop Candidates</strong></td><td><code>EmployeeCount</code>, <code>StandardHours</code>, <code>Over18</code>, <code>RecordID</code>, <code>ManagerNotes</code></td><td>Constant / High Missing</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cg cg2">
+    <div class="cha">
+      <div class="cha-t">Dataset at a Glance</div>
+      <div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:8px">
+        <div><span class="st-n" style="font-size:32px">1,495</span><br><span style="font-size:11px;color:var(--g500);font-weight:600">Total Employees</span></div>
+        <div><span class="st-n" style="font-size:32px">37</span><br><span style="font-size:11px;color:var(--g500);font-weight:600">Initial Features</span></div>
+        <div><span class="st-n" style="font-size:32px">10</span><br><span style="font-size:11px;color:var(--g500);font-weight:600">Categorical Columns</span></div>
+        <div><span class="st-n" style="font-size:32px">23</span><br><span style="font-size:11px;color:var(--g500);font-weight:600">Numerical Columns</span></div>
+      </div>
+    </div>
+    <div class="cha">
+      <div class="cha-t">Data Type Distribution</div>
+      <div style="margin-top:8px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:60%;height:28px;background:var(--navy);border-radius:6px;display:flex;align-items:center;padding-left:12px;color:var(--w);font-size:11px;font-weight:700">float64 (4)</div>
+          <span style="font-size:11px;color:var(--g500)">10.8%</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:75%;height:28px;background:var(--coral);border-radius:6px;display:flex;align-items:center;padding-left:12px;color:var(--w);font-size:11px;font-weight:700">int64 (23)</div>
+          <span style="font-size:11px;color:var(--g500)">62.2%</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:35%;height:28px;background:var(--g500);border-radius:6px;display:flex;align-items:center;padding-left:12px;color:var(--w);font-size:11px;font-weight:700">object (10)</div>
+          <span style="font-size:11px;color:var(--g500)">27.0%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 3: DATA QUALITY ════════ -->
+<section class="sl a" id="s3">
+  <span class="sn">04 / 12</span>
+  <div class="sh">
+    <div class="sh-i nv">🔍</div>
+    <div><div class="sh-t">Step 3 — Data Quality Assessment</div><div class="sh-s">8 categories of quality issues identified before cleaning</div></div>
+  </div>
+  <div class="cg cg2">
+    <div class="cd" style="border-left:4px solid var(--coral)">
+      <div class="c-lb">1. Missing Values</div>
+      <p class="c-tx">Present in <code>Age</code> (2.9%), <code>MonthlyIncome</code> (8.0%), <code>TotalWorkingYears</code> (4.1%), <code>YearsAtCompany</code> (5.0%), <code>EducationField</code> (1.9%), and <code>JobRole</code> (1.0%).</p>
+    </div>
+    <div class="cd" style="border-left:4px solid var(--coral)">
+      <div class="c-lb">2. High Missing Column</div>
+      <p class="c-tx"><code>ManagerNotes</code> has <strong>60%</strong> missing values — effectively unusable for any analysis. Must be dropped entirely.</p>
+    </div>
+    <div class="cd" style="border-left:4px solid var(--navy)">
+      <div class="c-lb nv">3. Constant Features</div>
+      <p class="c-tx"><code>EmployeeCount</code>, <code>StandardHours</code>, and <code>Over18</code> have <strong>only 1 unique value</strong> across all 1,495 rows — zero predictive variance.</p>
+    </div>
+    <div class="cd" style="border-left:4px solid var(--navy)">
+      <div class="c-lb nv">4. Inconsistent Text</div>
+      <p class="c-tx">Extra whitespaces in <code>Gender</code> (<code>" Male "</code>), inconsistent categories in <code>BusinessTravel</code> (<code>Travel_Rarely</code> vs <code>Travel-Rarely</code> vs <code>TRAVEL_RARELY</code>).</p>
+    </div>
+    <div class="cd" style="border-left:4px solid var(--coral)">
+      <div class="c-lb">5. Invalid Values</div>
+      <p class="c-tx"><code>Age</code> ranges from <strong>16 to 78</strong> (out-of-range). <code>DistanceFromHome</code> max is <strong>150</strong>. <code>MonthlyIncome</code> reaches <strong>500,000</strong> (scale error).</p>
+    </div>
+    <div class="cd" style="border-left:4px solid var(--coral)">
+      <div class="c-lb">6. Outliers (IQR)</div>
+      <p class="c-tx"><code>MonthlyIncome</code> (105 outliers), <code>YearsSinceLastPromotion</code> (109), <code>YearsAtCompany</code> (67), <code>TotalWorkingYears</code> (63) — significant statistical outliers detected.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 4: DATA CLEANING ════════ -->
+<section class="sl g" id="s4">
+  <span class="sn">05 / 12</span>
+  <div class="sh">
+    <div class="sh-i">🧹</div>
+    <div><div class="sh-t">Step 4 — Data Cleaning</div><div class="sh-s">Transforming raw data → IBM_df_clean (1495 × 28) with 0 missing values</div></div>
+  </div>
+  <div class="pipeline">
+    <div class="pipe-step"><div class="p-n">1</div><div class="p-l">Drop 9 Columns</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">2</div><div class="p-l">Text Standardization</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">3</div><div class="p-l">Fix Invalid Values</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">4</div><div class="p-l">Impute Missing</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">5</div><div class="p-l">Cast Types</div></div>
+  </div>
+  <div class="cg cg2" style="margin-top:28px">
+    <div class="sc-d">
+      <div class="sc-n">1</div>
+      <div class="sc-c">
+        <h4>Drop Redundant Columns</h4>
+        <p>Removed 3 constant features (<code>EmployeeCount</code>, <code>StandardHours</code>, <code>Over18</code>), 2 IDs (<code>EmployeeNumber</code>, <code>RecordID</code>), 3 noisy rates (<code>DailyRate</code>, <code>HourlyRate</code>, <code>MonthlyRate</code>), and 1 high-missing column (<code>ManagerNotes</code>). <strong>9 columns dropped.</strong></p>
+      </div>
+    </div>
+    <div class="sc-d">
+      <div class="sc-n">2</div>
+      <div class="sc-c">
+        <h4>Text Standardization</h4>
+        <p>Stripped leading/trailing whitespaces across all categorical columns. Unified inconsistent <code>BusinessTravel</code> categories (<code>"Travel Rarely"</code> and <code>"Travel-Rarely"</code> → <code>"Travel_Rarely"</code>).</p>
+      </div>
+    </div>
+    <div class="sc-d">
+      <div class="sc-n">3</div>
+      <div class="sc-c">
+        <h4>Handle Invalid Values</h4>
+        <p><code>Age</code> &lt; 18 or &gt; 65 → NaN. <code>DistanceFromHome</code> &gt; 30 → NaN. <code>MonthlyIncome</code> &gt; 50,000 → NaN. All replaced for proper downstream imputation.</p>
+      </div>
+    </div>
+    <div class="sc-d">
+      <div class="sc-n">4</div>
+      <div class="sc-c">
+        <h4>Missing Value Imputation</h4>
+        <p>Numerical columns (<code>Age</code>, <code>MonthlyIncome</code>, <code>TotalWorkingYears</code>, <code>YearsAtCompany</code>, <code>DistanceFromHome</code>) imputed with <strong>Median</strong>. Categorical columns (<code>EducationField</code>, <code>JobRole</code>) imputed with <strong>Mode</strong>.</p>
+      </div>
+    </div>
+    <div class="sc-d" style="grid-column:span 2">
+      <div class="sc-n">5</div>
+      <div class="sc-c">
+        <h4>Type Casting & Final Shape</h4>
+        <p>Converted <code>Age</code>, <code>TotalWorkingYears</code>, <code>YearsAtCompany</code>, <code>DistanceFromHome</code> from <code>float64</code> back to <code>int64</code>. Final dataset: <strong>(1,495 × 28)</strong> — <strong>0 missing values remaining.</strong></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 5: FEATURE PREPARATION ════════ -->
+<section class="sl a" id="s5">
+  <span class="sn">06 / 12</span>
+  <div class="sh">
+    <div class="sh-i">⚙️</div>
+    <div><div class="sh-t">Step 5 — Feature Preparation</div><div class="sh-s">Encoding → Scaling → (1495 × 49) ready for modeling</div></div>
+  </div>
+  <div class="pipeline" style="margin-bottom:28px">
+    <div class="pipe-step"><div class="p-n">1</div><div class="p-l">Target Encoding</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">2</div><div class="p-l">One-Hot Encoding</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step"><div class="p-n">3</div><div class="p-l">Standard Scaling</div></div>
+  </div>
+  <div class="cg" style="grid-template-columns:1fr">
+    <div class="sc-d">
+      <div class="sc-n">1</div>
+      <div class="sc-c">
+        <h4>Target Variable — Binary Encoding</h4>
+        <p>Converted <code>Attrition</code> from categorical text (<code>"Yes"</code> / <code>"No"</code>) into binary integers: <strong>1 = Left</strong>, <strong>0 = Stayed</strong>. Required format for classification algorithms.</p>
+      </div>
+    </div>
+    <div class="sc-d">
+      <div class="sc-n">2</div>
+      <div class="sc-c">
+        <h4>Categorical Encoding — One-Hot via <code>pd.get_dummies()</code></h4>
+        <p>Applied to 7 non-ordinal columns: <code>Department</code>, <code>JobRole</code>, <code>EducationField</code>, <code>Gender</code>, <code>MaritalStatus</code>, <code>OverTime</code>, <code>BusinessTravel</code>. Used <code>drop_first=True</code> to avoid the dummy variable trap (multicollinearity). Dataset expanded from 28 → 49 columns.</p>
+      </div>
+    </div>
+    <div class="sc-d">
+      <div class="sc-n">3</div>
+      <div class="sc-c">
+        <h4>Feature Scaling — <code>StandardScaler</code> (Z-score)</h4>
+        <p>Applied to 11 continuous features: <code>Age</code>, <code>DistanceFromHome</code>, <code>MonthlyIncome</code>, <code>NumCompaniesWorked</code>, <code>PercentSalaryHike</code>, <code>TotalWorkingYears</code>, <code>TrainingTimesLastYear</code>, <code>YearsAtCompany</code>, <code>YearsInCurrentRole</code>, <code>YearsSinceLastPromotion</code>, <code>YearsWithCurrManager</code>. Result: mean ≈ 0, std ≈ 1.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 6: EDA KEY FINDINGS ════════ -->
+<section class="sl g" id="s6">
+  <span class="sn">07 / 12</span>
+  <div class="sh">
+    <div class="sh-i">📊</div>
+    <div><div class="sh-t">Step 6 — EDA: Key Findings</div><div class="sh-s">Hypothesis-driven analysis tied to business decisions</div></div>
+  </div>
+  <p class="it">Every analysis was tied to a <strong>specific business question</strong>. Four hypotheses were tested against the data — here are the three most critical validated findings:</p>
+  <div class="cg cg3" id="stCards">
+    <div class="stc">
+      <div class="s-ico">⏰</div>
+      <div class="st-n"><span class="ctr" data-tg="3" data-sf="x">0x</span></div>
+      <div class="st-c">Employees working <strong>OverTime</strong> have nearly <strong>3x higher</strong> attrition risk.<br><span class="hi">30.4%</span> vs <span class="nv">10.3%</span></div>
+      <div class="cleg" style="justify-content:flex-start">
+        <div class="leg-i"><div class="leg-d cr"></div>OverTime (30.4%)</div>
+        <div class="leg-i"><div class="leg-d nv"></div>No Overtime (10.3%)</div>
+      </div>
+    </div>
+    <div class="stc">
+      <div class="s-ico">👔</div>
+      <div class="st-n"><span class="ctr" data-tg="39.1" data-sf="%" data-dc="1">0%</span></div>
+      <div class="st-c"><strong>Sales Representative</strong> has the highest attrition rate across the entire organization, followed by <strong>Lab Technician</strong> at <strong>23.2%</strong>.</div>
+      <div class="cleg" style="justify-content:flex-start">
+        <div class="leg-i"><div class="leg-d cr"></div>Sales Rep (39.1%)</div>
+        <div class="leg-i"><div class="leg-d cr" style="opacity:.5"></div>Lab Tech (23.2%)</div>
+      </div>
+    </div>
+    <div class="stc">
+      <div class="s-ico">📉</div>
+      <div class="st-n"><span class="ctr" data-tg="22.5" data-sf="%" data-dc="1">0%</span></div>
+      <div class="st-c"><strong>Job Satisfaction Level 1</strong> is an early warning signal — attrition rate is <strong>22.5%</strong> vs <strong>11.4%</strong> for Level 4 (High).</div>
+      <div class="cleg" style="justify-content:flex-start">
+        <div class="leg-i"><div class="leg-d cr"></div>Sat. Level 1 (22.5%)</div>
+        <div class="leg-i"><div class="leg-d nv"></div>Sat. Level 4 (11.4%)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 7: EDA VISUAL DEEP DIVE ════════ -->
+<section class="sl a" id="s7">
+  <span class="sn">08 / 12</span>
+  <div class="sh">
+    <div class="sh-i">📈</div>
+    <div><div class="sh-t">EDA — Visual Deep Dive</div><div class="sh-s">Attrition breakdown by OverTime, Job Role, and Satisfaction</div></div>
+  </div>
+  <div class="cg cg2" style="margin-bottom:22px">
+    <div class="cha">
+      <div class="cha-t">Attrition by OverTime Status</div>
+      <div class="bch" id="bc1">
+        <div class="bg"><div class="bp"><div class="b cr" data-h="82" style="height:0"></div><div class="b nv" data-h="28" style="height:0"></div></div><div class="bl">OverTime<br>Yes</div></div>
+        <div class="bg"><div class="bp"><div class="b cr" data-h="28" style="height:0"></div><div class="b nv" data-h="82" style="height:0"></div></div><div class="bl">OverTime<br>No</div></div>
+      </div>
+      <div class="cleg"><div class="leg-i"><div class="leg-d cr"></div>Left (Attrition)</div><div class="leg-i"><div class="leg-d nv"></div>Stayed</div></div>
+    </div>
+    <div class="cha">
+      <div class="cha-t">Top Attrition by Job Role</div>
+      <div class="don-c">
+        <div class="don" style="background:conic-gradient(var(--coral) 0deg 141deg,var(--g200) 141deg 360deg)">
+          <div class="don-ctr"><span class="pct">39.1%</span><span class="lbl">Sales Rep</span></div>
+        </div>
+        <div class="don-lg">
+          <div class="don-lg-i"><div class="don-lg-d" style="background:var(--coral)"></div><span><strong>Sales Rep</strong> — 39.1%</span></div>
+          <div class="don-lg-i"><div class="don-lg-d" style="background:var(--coral);opacity:.6"></div><span><strong>Lab Technician</strong> — 23.2%</span></div>
+          <div class="don-lg-i"><div class="don-lg-d" style="background:var(--coral);opacity:.3"></div><span><strong>HR Executive</strong> — 21.8%</span></div>
+          <div class="don-lg-i"><div class="don-lg-d" style="background:var(--navy)"></div><span><strong>Other Roles</strong> — &lt;15%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="cha">
+    <div class="cha-t">Satisfaction Level vs Attrition Rate</div>
+    <div class="bch" id="bc2">
+      <div class="bg"><div class="bp"><div class="b cr" data-h="75" style="height:0"></div><div class="b nv" data-h="35" style="height:0"></div></div><div class="bl">Level 1<br>(Low)</div></div>
+      <div class="bg"><div class="bp"><div class="b cr" data-h="55" style="height:0"></div><div class="b nv" data-h="55" style="height:0"></div></div><div class="bl">Level 2</div></div>
+      <div class="bg"><div class="bp"><div class="b cr" data-h="40" style="height:0"></div><div class="b nv" data-h="70" style="height:0"></div></div><div class="bl">Level 3</div></div>
+      <div class="bg"><div class="bp"><div class="b cr" data-h="30" style="height:0"></div><div class="b nv" data-h="82" style="height:0"></div></div><div class="bl">Level 4<br>(High)</div></div>
+    </div>
+    <div class="cleg"><div class="leg-i"><div class="leg-d cr"></div>Left (Attrition)</div><div class="leg-i"><div class="leg-d nv"></div>Stayed</div></div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 8: FEATURE ENGINEERING ════════ -->
+<section class="sl g" id="s8">
+  <span class="sn">09 / 12</span>
+  <div class="sh">
+    <div class="sh-i">🛠️</div>
+    <div><div class="sh-t">Step 7 — Feature Engineering</div><div class="sh-s">5 new domain-specific features to improve model accuracy and business value</div></div>
+  </div>
+  <p class="it">Beyond raw data preprocessing, <strong>5 engineered features</strong> were crafted from domain knowledge to capture deeper behavioral patterns in the data.</p>
+  <div class="cg cg5" id="fGrid">
+    <div class="fc">
+      <div class="f-i">💰</div>
+      <h4>Income_per_Working_Year</h4>
+      <p><code>MonthlyIncome / (TotalWorkingYears + 1)</code><br>Normalizes income by career experience to flag underpaid employees relative to seniority.</p>
+    </div>
+    <div class="fc">
+      <div class="f-i">📊</div>
+      <h4>Experience_Level</h4>
+      <p><code>Junior (0–2y), Mid (3–7y), Senior (8–15y), Expert (15y+)</code><br>Groups career years into bands to analyze attrition by career stage.</p>
+    </div>
+    <div class="fc">
+      <div class="f-i">🚀</div>
+      <h4>Promotion_Rate</h4>
+      <p><code>YearsSinceLastPromotion / (YearsAtCompany + 1)</code><br>Measures promotion delay relative to tenure — flags stagnant staff prone to departure.</p>
+    </div>
+    <div class="fc">
+      <div class="f-i">📅</div>
+      <h4>Tenure_Group</h4>
+      <p><code>0-1yr, 1-3yr, 3-5yr, 5yr+</code><br>Groups tenure into behavioral buckets — new hires vs veterans have different attrition drivers.</p>
+    </div>
+    <div class="fc">
+      <div class="f-i">🏷️</div>
+      <h4>High_Income_Indicator</h4>
+      <p><code>1 if MonthlyIncome > Median, else 0</code><br>Binary flag for fast compensation segmentation in reporting and tree models.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 9: EXECUTIVE SUMMARY ════════ -->
+<section class="sl a" id="s9">
+  <span class="sn">10 / 12</span>
+  <div class="sh">
+    <div class="sh-i nv">📋</div>
+    <div><div class="sh-t">Step 8 — Executive Summary</div><div class="sh-s">One-page summary for senior, non-technical management</div></div>
+  </div>
+  <div class="cg cg2" style="margin-bottom:28px">
+    <div class="cd" style="border-top:4px solid var(--coral)">
+      <div class="c-lb">The Problem</div>
+      <p class="c-tx">Unplanned employee turnover threatens organizational stability — driving up replacement costs and reducing business productivity. The goal: identify core drivers of departure and equip leadership with <strong>targeted retention strategies</strong>.</p>
+    </div>
+    <div class="cd" style="border-top:4px solid var(--navy)">
+      <div class="c-lb nv">Expected Impact</div>
+      <p class="c-tx">Reducing overall attrition from the current <strong>16.0% down to 10.0%</strong> will save substantial recruitment and onboarding expenses annually. Retaining skilled staff preserves institutional knowledge and stabilizes client relationships.</p>
+    </div>
+  </div>
+  <div class="cg" style="grid-template-columns:1fr">
+    <div class="rc"><div class="r-i">⏰</div><div><h4>OverTime Governance & Burnout Management</h4><p>Restrict consecutive overtime days. Establish workload auditing. Introduce compensatory time-off or spot bonuses for peak project phases.</p></div></div>
+    <div class="rc"><div class="r-i">🎯</div><div><h4>Targeted Compensation & Growth Strategy</h4><p>Conduct market salary benchmarking for Sales Representatives and Lab Technicians. Create transparent 12-month career growth roadmaps for entry-level positions.</p></div></div>
+    <div class="rc"><div class="r-i">📊</div><div><h4>Early Warning HR Intervention</h4><p>Deploy quarterly pulse surveys on <code>JobSatisfaction</code> and <code>EnvironmentSatisfaction</code>. Trigger automated 1-on-1 stay interviews whenever satisfaction drops to 1 or 2.</p></div></div>
+  </div>
+  <div class="ex" style="margin-top:18px" onclick="this.classList.toggle('open')">
+    <div class="ex-tr"><span>💡 Suggested next steps for the organization</span><span class="aw">▼</span></div>
+    <div class="ex-bd"><p><strong>Pilot Program:</strong> Launch a 90-day overtime management pilot in the Sales department.<br><strong>Predictive Modeling:</strong> Build and deploy a Machine Learning classification model (e.g., Random Forest / XGBoost) to generate early-warning attrition risk scores for active employees.</p></div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 10: FINAL REPORT ════════ -->
+<section class="sl g" id="s10">
+  <span class="sn">11 / 12</span>
+  <div class="sh">
+    <div class="sh-i">📄</div>
+    <div><div class="sh-t">Step 9 — Final Business Report</div><div class="sh-s">9 complete, ready-to-use sections for the final project file</div></div>
+  </div>
+  <div class="cd" style="margin-bottom:24px">
+    <div class="c-lb nv">Report Structure</div>
+    <table class="dtable">
+      <thead><tr><th>#</th><th>Section</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><strong>Executive Summary</strong></td><td>Quick-read overview for senior leadership</td></tr>
+        <tr><td>2</td><td><strong>Business Problem & Objectives</strong></td><td>Context, scope, and project goals</td></tr>
+        <tr><td>3</td><td><strong>Data Overview</strong></td><td>Dataset dimensions, features, target variable</td></tr>
+        <tr><td>4</td><td><strong>Data Quality & Cleaning</strong></td><td>Issues found, resolutions applied</td></tr>
+        <tr><td>5</td><td><strong>EDA Findings & Visualizations</strong></td><td>Key patterns, charts, interpretations</td></tr>
+        <tr><td>6</td><td><strong>Engineered Features</strong></td><td>5 new features with business rationale</td></tr>
+        <tr><td>7</td><td><strong>Synthesized Business Insights</strong></td><td>Combined conclusions from all analyses</td></tr>
+        <tr><td>8</td><td><strong>Actionable Recommendations</strong></td><td>Concrete HR policies and programs</td></tr>
+        <tr><td>9</td><td><strong>Appendix</strong></td><td>Code reference for feature engineering</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="ex" onclick="this.classList.toggle('open')">
+    <div class="ex-tr"><span>💡 Why separate technical and executive deliverables?</span><span class="aw">▼</span></div>
+    <div class="ex-bd"><p>In real-world organizations, decision-makers need concise, jargon-free insights — not raw model outputs. The Executive Summary bridges the gap between data science and business leadership, ensuring findings are understood, trusted, and acted upon. The full report provides the technical depth needed for validation and reproducibility.</p></div>
+  </div>
+</section>
+
+<!-- ════════ SLIDE 11: RECOMMENDATIONS & CLOSING ════════ -->
+<section class="sl sl-cl" id="s11">
+  <span class="sn" style="color:rgba(255,255,255,.12)">12 / 12</span>
+  <div class="ct">
+    <div class="cl-ico">🎯</div>
+    <h2>Recommendations &<br><span style="color:var(--coral)">Business Value</span></h2>
+    <p class="sub">Turning data insights into measurable impact for IBM HR</p>
+    <div class="cl-st">
+      <div class="cl-s"><div class="nm"><span class="ctr" data-tg="3" data-sf="+" data-dc="0">0+</span></div><div class="lb">Key Risk Drivers</div></div>
+      <div class="cl-s"><div class="nm"><span class="ctr" data-tg="5" data-sf="" data-dc="0">0</span></div><div class="lb">Engineered Features</div></div>
+      <div class="cl-s"><div class="nm"><span class="ctr" data-tg="9" data-sf="" data-dc="0">0</span></div><div class="lb">Report Sections</div></div>
+    </div>
+    <div style="text-align:left;max-width:620px;margin:0 auto">
+      <div class="rc" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-left-color:var(--coral);margin-bottom:14px">
+        <div class="r-i" style="background:rgba(224,82,58,.18)">⏰</div>
+        <div><h4 style="color:var(--w)">OverTime Policy Review</h4><p style="color:rgba(255,255,255,.45)">OverTime triples attrition risk (30.4% vs 10.3%). Restructure workload, cap consecutive overtime days, and introduce compensatory time-off.</p></div>
+      </div>
+      <div class="rc" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-left-color:var(--coral);margin-bottom:14px">
+        <div class="r-i" style="background:rgba(224,82,58,.18)">🎯</div>
+        <div><h4 style="color:var(--w)">Targeted Retention for Sales Reps & Lab Techs</h4><p style="color:rgba(255,255,255,.45)">Sales Reps (39.1%) and Lab Techs (23.2%) leave at the highest rates. Design role-specific career roadmaps, mentorship, and competitive pay adjustments.</p></div>
+      </div>
+      <div class="rc" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-left-color:var(--coral);margin-bottom:14px">
+        <div class="r-i" style="background:rgba(224,82,58,.18)">📊</div>
+        <div><h4 style="color:var(--w)">Satisfaction Monitoring System</h4><p style="color:rgba(255,255,255,.45)">Low satisfaction (22.5% attrition) is a predictable early warning. Deploy quarterly pulse surveys and trigger stay interviews at Level 1–2 scores.</p></div>
+      </div>
+    </div>
+    <div style="margin-top:40px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08)">
+      <p style="font-size:16px;font-weight:300;color:rgba(255,255,255,.45)"><em>"Reducing attrition from 16% to 10% translates to significant annual savings in recruitment, onboarding, and lost productivity."</em></p>
+      <p style="font-size:12px;color:rgba(255,255,255,.25);margin-top:14px;font-weight:700;letter-spacing:1.2px">THANK YOU — QUESTIONS?</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="kh"><kbd>↑</kbd><kbd>↓</kbd> Navigate | <kbd>Esc</kbd> Menu</div>
+
+<script>
+(function(){
+  const sl=document.querySelectorAll('.sl');
+  const ni=document.querySelectorAll('.ni');
+  const pf=document.getElementById('pF');
+  const cS=document.getElementById('cS');
+  let cur=0,anim=false;
+  function go(i){
+    if(i<0||i>=sl.length||anim)return;
+    anim=true;cur=i;
+    sl[i].scrollIntoView({behavior:'smooth'});
+    ni.forEach((n,j)=>n.classList.toggle('active',j===i));
+    cS.textContent=i+1;
+    pf.style.width=((i/(sl.length-1))*100)+'%';
+    setTimeout(()=>{anim=false},550);
+  }
+  ni.forEach(n=>{n.addEventListener('click',e=>{e.preventDefault();go(parseInt(n.dataset.s));document.querySelector('.sb').classList.remove('open')})});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'||e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();go(cur+1)}
+    else if(e.key==='ArrowUp'||e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(cur-1)}
+    else if(e.key==='Home'){e.preventDefault();go(0)}
+    else if(e.key==='End'){e.preventDefault();go(sl.length-1)}
+    else if(e.key==='Escape')document.querySelector('.sb').classList.toggle('open');
+  });
+  const obs=new IntersectionObserver(es=>{
+    es.forEach(en=>{
+      if(en.isIntersecting){
+        en.target.classList.add('vis');
+        en.target.querySelectorAll('.ctr').forEach(c=>{
+          if(c.dataset.a)return;c.dataset.a='1';animC(c);
+        });
+        en.target.querySelectorAll('.b[data-h]').forEach(b=>{setTimeout(()=>{b.style.height=b.dataset.h+'%'},180)});
+        const idx=Array.from(sl).indexOf(en.target);
+        if(idx>=0){cur=idx;ni.forEach((n,j)=>n.classList.toggle('active',j===idx));cS.textContent=idx+1;pf.style.width=((idx/(sl.length-1))*100)+'%'}
+      }
+    });
+  },{threshold:.35});
+  sl.forEach(s=>obs.observe(s));
+  function animC(el){
+    const tg=parseFloat(el.dataset.tg),sf=el.dataset.sf||'',dc=parseInt(el.dataset.dc)||0;
+    const dur=1400,st=performance.now();
+    function upd(now){
+      const p=Math.min((now-st)/dur,1),e=1-Math.pow(1-p,3),c=e*tg;
+      el.textContent=(dc>0?c.toFixed(dc):Math.round(c))+sf;
+      if(p<1)requestAnimationFrame(upd);
+    }
+    requestAnimationFrame(upd);
+  }
+  let ty=0;
+  document.addEventListener('touchstart',e=>{ty=e.touches[0].clientY},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const d=ty-e.changedTouches[0].clientY;
+    if(Math.abs(d)>55){d>0?go(cur+1):go(cur-1)}
+  },{passive:true});
+  go(0);
+})();
+</script>
+</body>
+</html>
